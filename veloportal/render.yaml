@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: veloportal-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CLIENT_URL
+        sync: false  # set to your Vercel frontend URL after it's deployed
+      - key: DB_HOST
+        fromDatabase: { name: veloportal-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: veloportal-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: veloportal-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: veloportal-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: veloportal-db, property: password }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: MPESA_ENV
+        value: sandbox
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_SHORTCODE
+        value: 174379
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_CALLBACK_URL
+        sync: false  # set to https://<this-service>.onrender.com/api/payments/mpesa/callback after first deploy
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+databases:
+  - name: veloportal-db
+    plan: free
+    databaseName: veloportal
+    user: veloportal

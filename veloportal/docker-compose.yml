@@ -1,0 +1,82 @@
+version: '3.8'
+
+# One-command full stack: `docker compose up -d` starts Postgres, the API,
+# and the frontend together, wired to talk to each other. Run
+# `docker compose ps` afterwards — all three services should show "running"
+# (postgres reports "healthy" once its healthcheck passes).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: veloportal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: veloportal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - veloportal_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: veloportal-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      NODE_ENV: development
+      CLIENT_URL: http://localhost:5173
+      DB_HOST: postgres          # service name — resolved on the Docker network, not localhost
+      DB_PORT: 5432
+      DB_NAME: veloportal
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET:-veloportal_super_secret_change_me}
+      JWT_EXPIRES_IN: 7d
+      # M-Pesa — override these in a .env file next to this compose file, or
+      # export them in your shell before running `docker compose up`
+      MPESA_ENV: ${MPESA_ENV:-sandbox}
+      MPESA_CONSUMER_KEY: ${MPESA_CONSUMER_KEY:-}
+      MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET:-}
+      MPESA_SHORTCODE: ${MPESA_SHORTCODE:-174379}
+      MPESA_PASSKEY: ${MPESA_PASSKEY:-}
+      MPESA_INITIATOR_NAME: ${MPESA_INITIATOR_NAME:-testapi}
+      MPESA_INITIATOR_PASSWORD: ${MPESA_INITIATOR_PASSWORD:-}
+      MPESA_PARTY_A: ${MPESA_PARTY_A:-600983}
+      MPESA_PARTY_B: ${MPESA_PARTY_B:-600000}
+      MPESA_CALLBACK_URL: ${MPESA_CALLBACK_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: veloportal-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  veloportal_pgdata:
